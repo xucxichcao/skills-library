@@ -174,24 +174,73 @@ Look for `@utility` declarations like:
 ```
 
 **Usage priority**:
+
 1. **First choice**: Use utility class if it matches Figma
    ```liquid
    <h1 class="h1">Heading</h1>
    <p class="body-s">Text</p>
    ```
 
-2. **If no utility matches**: Use custom values from Figma
-   ```liquid
-   <h2 class="text-[3.2rem] font-medium leading-[1.3]">
+2. **If no utility matches**: Create a new utility in `src/styles/tailwind.css`
+
+   When Figma shows typography that doesn't match existing utilities, **create a new `@utility`** rather than using inline classes. This keeps templates clean and typography consistent.
+
+   **Figma shows**: `Font: Futura PT Heavy, 34px, tracking -0.068px`
+   
+   **Step 1** - Add new utility to `src/styles/tailwind.css`:
+   ```css
+   @utility mobile-header {
+     font-family: var(--font-primary);
+     font-weight: 800;
+     font-size: 3.4rem;
+     line-height: normal;
+     letter-spacing: -0.068rem;
+   }
    ```
 
-3. **Responsive typography**: Check if utility is responsive
+   **Step 2** - Use the utility class:
    ```liquid
-   <!-- If h2 utility is responsive (has @media) -->
-   <h2 class="h2">Heading</h2>
-   
-   <!-- If not, add breakpoints manually -->
-   <h2 class="text-[2.8rem] md:text-[3.6rem] lg:text-[4.6rem]">
+   <h2 class="mobile-header">Shaping the future</h2>
+   ```
+
+   **Naming conventions** for new utilities:
+   - Use descriptive names based on purpose: `card-title`, `section-label`, `stat-number`
+   - For responsive variants: `h1-mobile`, `h2-tablet`, `caption-desktop`
+   - Check Figma style names for hints (often shown in the output metadata)
+
+   **❌ Avoid** long inline class lists:
+   ```liquid
+   <!-- Don't do this -->
+   <h2 class="font-primary text-[3.4rem] font-extrabold leading-normal tracking-[-0.068rem]">
+   ```
+
+   **✅ Instead** create a utility and use it:
+   ```liquid
+   <!-- Do this -->
+   <h2 class="mobile-header">
+   ```
+
+3. **Responsive typography** - Two approaches:
+
+   **Option A**: Use separate utilities with breakpoints
+   ```liquid
+   <h2 class="h2-mobile md:h2">Section Title</h2>
+   ```
+
+   **Option B**: Create a responsive utility (if pattern repeats)
+   ```css
+   @utility h2-responsive {
+     font-family: var(--font-secondary);
+     font-weight: 700;
+     font-size: 3.6rem;
+     line-height: normal;
+     
+     @media (min-width: 768px) {
+       font-family: var(--font-primary);
+       font-weight: 500;
+       font-size: 4.8rem;
+     }
+   }
    ```
 
 ### 7. Color System
@@ -224,12 +273,44 @@ Look for `@theme` section with `--color-*` variables:
 
 ### 8. Images
 
-**Standard pattern**:
+**Use Figma MCP asset URLs directly** - When fetching designs via the Figma MCP, the response includes image URLs as constants:
+```javascript
+const imgHeroBackground = "https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000";
+const imgTeamPhoto = "https://www.figma.com/api/mcp/asset/661f8511-f30c-52e5-b827-557766551111";
+```
 
+Use these URLs directly in your implementation:
+```liquid
+<!-- ✅ Correct: Use the Figma MCP asset URL directly -->
+<img 
+  src="https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000"
+  alt="WGU campus aerial view"
+  class="size-full object-cover">
+
+<!-- ❌ Wrong: Don't use Liquid defaults with made-up placeholder URLs -->
+<img 
+  src="{{ background_image | default: 'https://example.com/placeholder.jpg' }}"
+  alt="...">
+```
+
+Figma MCP asset URLs are valid for 7 days and can be used directly in templates. The user can replace them with permanent CDN URLs later if needed.
+
+**Local asset paths** - Files in `src/assets/` are served from the root:
+```liquid
+<!-- ✅ Correct: Assets served from root -->
+<img src="/wgu-logo-white.png" alt="WGU Logo">
+
+<!-- ❌ Wrong: Don't include /assets/ in path -->
+<img src="/assets/wgu-logo-white.png" alt="WGU Logo">
+```
+
+The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/wgu-logo-white.png` becomes `/wgu-logo-white.png` in the final build.
+
+**Standard pattern**:
 ```liquid
 <div class="relative overflow-hidden rounded-[value]">
   <img 
-    src="https://d25zu39ynyitwy.cloudfront.net/..."
+    src="https://www.figma.com/api/mcp/asset/..."
     alt="Descriptive alt text"
     class="size-full object-cover">
 </div>
@@ -645,8 +726,10 @@ When implementing a Figma design:
 <!-- ❌ Don't add padding/flex to <section> -->
 <section class="px-4 flex flex-col">
 
-<!-- ❌ Don't hardcode font sizes when utility exists -->
-<h2 class="text-[2.8rem]">  <!-- Check config for h2 utility -->
+<!-- ❌ Don't use inline typography classes -->
+<h2 class="font-primary text-[3.4rem] font-extrabold leading-normal tracking-[-0.068rem]">
+<!-- Create a @utility in tailwind.css instead and use: -->
+<h2 class="mobile-header">
 
 <!-- ❌ Don't use hex when theme color exists -->
 <div class="text-[#da291c]">  <!-- Check config for color tokens -->
