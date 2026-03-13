@@ -273,44 +273,91 @@ Look for `@theme` section with `--color-*` variables:
 
 ### 8. Images
 
-**Use Figma MCP asset URLs directly** - When fetching designs via the Figma MCP, the response includes image URLs as constants:
+**Download, convert to WebP, and save locally** - When fetching designs via the Figma MCP, the response includes image URLs as constants:
 ```javascript
 const imgHeroBackground = "https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000";
 const imgTeamPhoto = "https://www.figma.com/api/mcp/asset/661f8511-f30c-52e5-b827-557766551111";
 ```
 
-Use these URLs directly in your implementation:
+**ALWAYS use wizard-mcp to download and convert images to WebP**:
+
+**CRITICAL**: Use the **absolute path** for `output_dir`. Relative paths don't work reliably with wizard-mcp. Determine the workspace root from your environment (e.g., from `user_info` or by running `pwd`).
+
+For each image URL from Figma, call the `wizard-mcp` `convert_image` tool:
+```
+Tool: wizard-mcp → convert_image
+Arguments:
+  url: "https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000"
+  output_dir: "/absolute/path/to/workspace/src/assets"
+  formats: ["webp"]
+```
+
+Example with real path:
+```
+Tool: wizard-mcp → convert_image
+Arguments:
+  url: "https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000"
+  output_dir: "/Users/username/Projects/my-project/src/assets"
+  formats: ["webp"]
+```
+
+The tool downloads the image, converts it to WebP format, and saves it to `src/assets/`. It returns the filename (e.g., `550e8400-e29b-41d4-a716-446655440000.webp`).
+
+**Naming convention**: Use descriptive names by renaming after download, or use the returned filename directly. The build process copies `src/assets/*` to the root of `dist/`.
+
+**Use local WebP paths in templates**:
 ```liquid
-<!-- ✅ Correct: Use the Figma MCP asset URL directly -->
+<!-- ✅ Correct: Use local WebP file from assets -->
 <img 
-  src="https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000"
+  src="/hero-background.webp"
   alt="WGU campus aerial view"
   class="size-full object-cover">
 
-<!-- ❌ Wrong: Don't use Liquid defaults with made-up placeholder URLs -->
+<!-- ❌ Wrong: Don't use temporary Figma URLs -->
 <img 
-  src="{{ background_image | default: 'https://example.com/placeholder.jpg' }}"
+  src="https://www.figma.com/api/mcp/asset/..."
   alt="...">
 ```
 
-Figma MCP asset URLs are valid for 7 days and can be used directly in templates. The user can replace them with permanent CDN URLs later if needed.
+**Image processing workflow**:
+
+1. **Get workspace absolute path** from your environment (check `user_info` for "Workspace Path" or run `pwd`)
+2. **Collect all image URLs** from Figma design context
+3. **Call wizard-mcp convert_image** for each URL with absolute `output_dir` path and `formats: ["webp"]`
+4. **Rename files** to descriptive names (e.g., `hero-team-photo.webp`, `logo-aseptico.webp`)
+5. **Use local paths** in Liquid templates (without `/assets/` prefix)
+
+**Example workflow**:
+```
+Workspace: /Users/dev/Projects/career-site
+Figma returns: const imgTeamPhoto = "https://www.figma.com/api/mcp/asset/661f8511..."
+
+Step 1: Call wizard-mcp convert_image
+  → url: "https://www.figma.com/api/mcp/asset/661f8511..."
+  → output_dir: "/Users/dev/Projects/career-site/src/assets"
+  → formats: ["webp"]
+  
+Step 2: Rename the output file
+  → mv /Users/dev/Projects/career-site/src/assets/661f8511....webp /Users/dev/Projects/career-site/src/assets/team-photo.webp
+
+Step 3: Use in template
+  → <img src="/team-photo.webp" alt="Avalara team collaborating">
+```
 
 **Local asset paths** - Files in `src/assets/` are served from the root:
 ```liquid
 <!-- ✅ Correct: Assets served from root -->
-<img src="/wgu-logo-white.png" alt="WGU Logo">
+<img src="/hero-background.webp" alt="Hero background">
 
 <!-- ❌ Wrong: Don't include /assets/ in path -->
-<img src="/assets/wgu-logo-white.png" alt="WGU Logo">
+<img src="/assets/hero-background.webp" alt="...">
 ```
-
-The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/wgu-logo-white.png` becomes `/wgu-logo-white.png` in the final build.
 
 **Standard pattern**:
 ```liquid
 <div class="relative overflow-hidden rounded-[value]">
   <img 
-    src="https://www.figma.com/api/mcp/asset/..."
+    src="/section-image.webp"
     alt="Descriptive alt text"
     class="size-full object-cover">
 </div>
@@ -320,7 +367,7 @@ The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/w
 ```liquid
 <!-- Compare Figma designs for size changes -->
 <div class="h-[15rem] md:h-[32.2rem] lg:h-[48rem]">
-  <img src="..." alt="..." class="size-full object-cover">
+  <img src="/hero-image.webp" alt="..." class="size-full object-cover">
 </div>
 ```
 
@@ -337,6 +384,15 @@ The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/w
 
 #### Carousel (Embla)
 
+**IMPORTANT - Carousel Item Spacing**: For carousel items, use `mx` (margin left-right) on each item instead of `gap` on the container. This works better with Embla carousel's scroll behavior.
+
+**Spacing conversion rule**: Divide the Figma gap value by 2 and apply as `mx` to each item:
+- Figma gap `1rem` → use `mx-[0.5rem]` on each item
+- Figma gap `2rem` → use `mx-[1rem]` on each item  
+- Figma gap `2.4rem` → use `mx-[1.2rem]` on each item
+- Figma gap `3rem` → use `mx-[1.5rem]` on each item
+- Figma gap `5rem` → use `mx-[2.5rem]` on each item
+
 ```liquid
 <section 
   data-embla-align="start"
@@ -345,8 +401,10 @@ The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/w
   class="carousel bg-black">
   
   <div class="carousel--slide overflow-hidden">
+    <!-- ✅ Use flex WITHOUT gap, apply mx to each item -->
     <div class="flex flex-row">
       {% for item in items %}
+        <!-- mx-[1.2rem] = half of 2.4rem gap from Figma -->
         <div class="mx-[1.2rem] w-[16.4rem] shrink-0">
           <!-- Slide content -->
         </div>
@@ -363,6 +421,26 @@ The build process copies `src/assets/*` to the root of `dist/`, so `src/assets/w
     <button class="carousel--next">Next</button>
   </div>
 </section>
+```
+
+**❌ Don't use gap on carousel item containers**:
+```liquid
+<!-- Wrong: gap doesn't work well with Embla -->
+<div class="flex flex-row gap-[2.4rem]">
+  {% for item in items %}
+    <div class="w-[16.4rem] shrink-0">...</div>
+  {% endfor %}
+</div>
+```
+
+**✅ Use mx on each carousel item**:
+```liquid
+<!-- Correct: mx provides proper spacing for Embla -->
+<div class="flex flex-row">
+  {% for item in items %}
+    <div class="mx-[1.2rem] w-[16.4rem] shrink-0">...</div>
+  {% endfor %}
+</div>
 ```
 
 **Carousel attributes** (set on `<section>`):
@@ -641,7 +719,7 @@ Components are template fragments that accept parameters via `{% render %}`.
 
 ### Carousel with Repeated Items
 
-**Figma shows**: Horizontal scrolling logos/images
+**Figma shows**: Horizontal scrolling logos/images with 2.4rem gap between items
 
 `src/partials/index/awards.liquid`:
 ```liquid
@@ -651,8 +729,10 @@ Components are template fragments that accept parameters via `{% render %}`.
   class="carousel bg-black">
   
   <div class="carousel--slide overflow-hidden">
+    <!-- No gap on flex container - use mx on items instead -->
     <div class="flex flex-row">
       {% for award in awards %}
+        <!-- mx-[1.2rem] = half of 2.4rem gap from Figma design -->
         <div class="mx-[1.2rem] h-[15rem] w-[16.4rem] shrink-0">
           <img src="{{ award.images.src }}" alt="{{ award.images.alt }}" class="size-full object-contain">
         </div>
@@ -662,6 +742,12 @@ Components are template fragments that accept parameters via `{% render %}`.
   
   <!-- Navigation buttons -->
 </section>
+```
+
+**Responsive carousel gaps**: If Figma shows different gaps per breakpoint, use responsive mx:
+```liquid
+<!-- Mobile: 3rem gap, Desktop: 5rem gap -->
+<div class="mx-[1.5rem] lg:mx-[2.5rem] shrink-0">
 ```
 
 ### Using Components
@@ -689,6 +775,7 @@ When implementing a Figma design:
 - [ ] **Identify repeated elements** in Figma
 - [ ] **Create data structure** if elements repeat (`.liquid.json` file)
 - [ ] **Check `src/components/`** for reusable components
+- [ ] **Process images**: Use wizard-mcp to download, convert to WebP, save to `src/assets/`
 - [ ] Use proper section structure (`<section>` + inner `<div>`)
 - [ ] Apply mobile-first responsive classes
 - [ ] Use typography utilities from config (or custom if none match)
@@ -745,6 +832,16 @@ When implementing a Figma design:
 
 <!-- ❌ Don't omit alt text -->
 <img src="...">  <!-- Always add alt="" or alt="description" -->
+
+<!-- ❌ Don't use Figma asset URLs directly -->
+<img src="https://www.figma.com/api/mcp/asset/...">
+<!-- Always download, convert to WebP with wizard-mcp, and use local paths -->
+
+<!-- ❌ Don't use gap on carousel item containers -->
+<div class="flex flex-row gap-[3rem]">
+  {% for item in items %}<div class="shrink-0">...</div>{% endfor %}
+</div>
+<!-- Use mx on each item instead: mx-[1.5rem] for 3rem gap -->
 ```
 
 ## Testing
@@ -765,15 +862,18 @@ Before considering implementation complete:
 4. **Identify patterns**: Repeated elements, data structures needed
 5. **Compare**: What changes between breakpoints (layout, spacing, typography, visibility)
 6. **Text content check**: If text differs, use Desktop version
-7. **Create data**: `.liquid.json` file if elements repeat
-8. **Implement**: Mobile-first with responsive overrides, use loops for repeated items
-9. **Use utilities**: From config when they match Figma
-10. **Custom values**: When no utility matches
-11. **Test**: All breakpoints and accessibility
+7. **Process images**: Use wizard-mcp `convert_image` with **absolute path** to download all Figma images, convert to WebP, save to `src/assets/`
+8. **Create data**: `.liquid.json` file if elements repeat
+9. **Implement**: Mobile-first with responsive overrides, use loops for repeated items, use local WebP image paths
+10. **Use utilities**: From config when they match Figma
+11. **Custom values**: When no utility matches
+12. **Test**: All breakpoints and accessibility
 
 ## Additional Resources
 
 - **Theme config**: `src/styles/tailwind.css` (read first!)
+- **Image processing**: `wizard-mcp` → `convert_image` tool for WebP conversion
+- **Assets folder**: `src/assets/` for all images (served from root in build)
 - **Carousel script**: `src/scripts/carousel.js`
 - **Accordion script**: `src/scripts/accordion.js`
 - **Spoiler script**: `src/scripts/spoiler.js`
