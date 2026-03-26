@@ -1,6 +1,19 @@
 # Implementation Examples
 
-Real examples from the Victra career site project.
+Real examples from the Victra career site project. Reference these when implementing Figma designs.
+
+**Quick Reference**:
+- Layout patterns: Examples 1, 2, 5
+- Data loops: Examples 3, 8, 10
+- Carousels: Examples 4, 8, 12
+- Components: Example 9
+- Typography: Example 6
+- Accessibility: Example 7
+- Interactive dialogs: Example 11
+- Accordion: Example 13
+- Spoiler: Example 14
+
+---
 
 ## Example 1: Core Values Section
 
@@ -442,3 +455,219 @@ Real examples from the Victra career site project.
 - Multiple properties per item
 - Spoiler script handles expand/collapse automatically
 - Clean separation of data and presentation
+
+## Example 11: Share Dialog with Focus-trap
+
+**Figma Design**: Share button that opens a dropdown with social links
+
+**Use case**: Job details pages, any share functionality
+
+**Implementation**:
+
+`src/partials/jobs/share-dialog.liquid`:
+```liquid
+<div class="relative" data-share-wrapper>
+  <button
+    type="button"
+    data-share-trigger
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    class="button button-text button--secondary flex w-full items-center justify-center gap-[0.8rem]">
+    Share
+    <svg class="size-[1.25rem]" aria-hidden="true">
+      <use href="#i-share"></use>
+    </svg>
+  </button>
+
+  <!-- Share Dialog (focus-trap) -->
+  <div
+    data-share-dialog
+    role="dialog"
+    aria-label="Share this job"
+    aria-modal="true"
+    class="shadow-resting absolute top-full right-0 left-0 z-10 hidden border border-[#ddd] bg-white">
+    <div class="flex flex-col">
+      <a
+        href="https://www.facebook.com/sharer/sharer.php?u={{ current_url | default: '' | url_encode }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="button-text text-darkest-grey hocus:bg-primary-orange hocus:text-white px-[1.6rem] py-[1.6rem] transition-colors duration-300">
+        FACEBOOK
+      </a>
+      <a
+        href="https://twitter.com/intent/tweet?url={{ current_url | default: '' | url_encode }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="button-text text-darkest-grey hocus:bg-primary-orange hocus:text-white px-[1.6rem] py-[1.6rem] transition-colors duration-300">
+        X (TWITTER)
+      </a>
+      <a
+        href="https://www.linkedin.com/sharing/share-offsite?url={{ current_url | default: '' | url_encode }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="button-text text-darkest-grey hocus:bg-primary-orange hocus:text-white px-[1.6rem] py-[1.6rem] transition-colors duration-300">
+        LINKEDIN
+      </a>
+      <a
+        href="mailto:?subject={{ job_title | default: 'Job Opportunity' | url_encode }}&body=Check out this job opportunity: {{ current_url | default: '' | url_encode }}"
+        class="button-text text-darkest-grey hocus:bg-primary-orange hocus:text-white px-[1.6rem] py-[1.6rem] transition-colors duration-300">
+        EMAIL
+      </a>
+    </div>
+  </div>
+</div>
+```
+
+**Required JavaScript** (`src/scripts/share-dialog.js`):
+```javascript
+(function () {
+  const wrappers = document.querySelectorAll('[data-share-wrapper]');
+
+  wrappers.forEach(function (wrapper) {
+    const trigger = wrapper.querySelector('[data-share-trigger]');
+    const dialog = wrapper.querySelector('[data-share-dialog]');
+
+    if (!trigger || !dialog) return;
+
+    let isOpen = false;
+
+    function getFocusableElements() {
+      return dialog.querySelectorAll('a, button, [tabindex]:not([tabindex="-1"])');
+    }
+
+    function openDialog() {
+      isOpen = true;
+      dialog.classList.remove('hidden');
+      trigger.setAttribute('aria-expanded', 'true');
+      const focusable = getFocusableElements();
+      if (focusable.length > 0) focusable[0].focus();
+    }
+
+    function closeDialog() {
+      isOpen = false;
+      dialog.classList.add('hidden');
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (isOpen) {
+        closeDialog();
+      } else {
+        openDialog();
+      }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (isOpen && !dialog.contains(e.target) && e.target !== trigger) {
+        closeDialog();
+      }
+    });
+
+    wrapper.addEventListener('keydown', function (e) {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDialog();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusable = getFocusableElements();
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }
+    });
+  });
+})();
+```
+
+**Key points**:
+- Data attributes: `data-share-wrapper`, `data-share-trigger`, `data-share-dialog`
+- Focus moves to first link on open
+- Tab cycles within dialog (focus-trap)
+- Escape closes and returns focus to trigger
+- Click outside closes dialog
+- `aria-expanded` updates automatically
+
+## Example 12: Carousel Item Spacing
+
+**Figma Design**: Horizontal scroll with 2.4rem gap between items
+
+**❌ Wrong - using gap**:
+```liquid
+<div class="flex flex-row gap-[2.4rem]">
+  {% for item in items %}
+    <div class="w-[16.4rem] shrink-0">...</div>
+  {% endfor %}
+</div>
+```
+
+**✅ Correct - using mx (half of gap)**:
+```liquid
+<div class="flex flex-row">
+  {% for item in items %}
+    <div class="mx-[1.2rem] w-[16.4rem] shrink-0">...</div>
+  {% endfor %}
+</div>
+```
+
+**Responsive gaps**:
+```liquid
+<!-- Mobile: 3rem gap → mx-[1.5rem], Desktop: 5rem gap → mx-[2.5rem] -->
+<div class="mx-[1.5rem] lg:mx-[2.5rem] shrink-0">
+```
+
+## Example 13: Accordion
+
+**Figma Design**: FAQ section with expandable items
+
+```liquid
+<div class="accordion--group" id="faq-accordion">
+  {% for item in faqs %}
+    <div class="accordion--wrapper">
+      <button class="accordion--trigger">
+        {{ item.question }}
+      </button>
+      <div class="accordion--content">
+        {{ item.answer }}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+```
+
+## Example 14: Spoiler (Expandable Content)
+
+**Figma Design**: Content with show/hide toggle
+
+```liquid
+<div class="spoiler--wrapper">
+  <h3>{{ title }}</h3>
+  <div class="spoiler--content hidden">
+    <p>{{ description }}</p>
+  </div>
+  <button class="spoiler--trigger current:rotate-180">
+    <svg><use href="#i-chevron-down-bold"></use></svg>
+  </button>
+</div>
+```
+
+**Key points**:
+- `spoiler--content hidden` starts collapsed
+- `current:rotate-180` rotates chevron when expanded
+- Script handles toggle automatically

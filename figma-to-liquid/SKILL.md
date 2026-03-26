@@ -382,66 +382,18 @@ Step 3: Use in template
 
 ### 7. Interactive Components
 
+> **Full examples**: See `EXAMPLES.md` for complete implementations of all interactive components.
+
 #### Carousel (Embla)
 
-**IMPORTANT - Carousel Item Spacing**: For carousel items, use `mx` (margin left-right) on each item instead of `gap` on the container. This works better with Embla carousel's scroll behavior.
+**IMPORTANT - Carousel Item Spacing**: Use `mx` (margin left-right) on each item instead of `gap` on the container. Divide Figma gap by 2 for the `mx` value.
 
-**Spacing conversion rule**: Divide the Figma gap value by 2 and apply as `mx` to each item:
-- Figma gap `1rem` → use `mx-[0.5rem]` on each item
-- Figma gap `2rem` → use `mx-[1rem]` on each item  
-- Figma gap `2.4rem` → use `mx-[1.2rem]` on each item
-- Figma gap `3rem` → use `mx-[1.5rem]` on each item
-- Figma gap `5rem` → use `mx-[2.5rem]` on each item
-
-```liquid
-<section 
-  data-embla-align="start"
-  data-embla-slides-to-scroll="2"
-  data-embla-md-slides-to-scroll="4"
-  class="carousel bg-black">
-  
-  <div class="carousel--slide overflow-hidden">
-    <!-- ✅ Use flex WITHOUT gap, apply mx to each item -->
-    <div class="flex flex-row">
-      {% for item in items %}
-        <!-- mx-[1.2rem] = half of 2.4rem gap from Figma -->
-        <div class="mx-[1.2rem] w-[16.4rem] shrink-0">
-          <!-- Slide content -->
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-  
-  <!-- Navigation -->
-  <div class="flex items-center justify-center gap-3">
-    <button class="carousel--prev">Prev</button>
-    <div class="carousel--dots">
-      <button class="current:bg-white"></button>
-    </div>
-    <button class="carousel--next">Next</button>
-  </div>
-</section>
-```
-
-**❌ Don't use gap on carousel item containers**:
-```liquid
-<!-- Wrong: gap doesn't work well with Embla -->
-<div class="flex flex-row gap-[2.4rem]">
-  {% for item in items %}
-    <div class="w-[16.4rem] shrink-0">...</div>
-  {% endfor %}
-</div>
-```
-
-**✅ Use mx on each carousel item**:
-```liquid
-<!-- Correct: mx provides proper spacing for Embla -->
-<div class="flex flex-row">
-  {% for item in items %}
-    <div class="mx-[1.2rem] w-[16.4rem] shrink-0">...</div>
-  {% endfor %}
-</div>
-```
+| Figma gap | Use on each item |
+|-----------|------------------|
+| `1rem` | `mx-[0.5rem]` |
+| `2rem` | `mx-[1rem]` |
+| `2.4rem` | `mx-[1.2rem]` |
+| `3rem` | `mx-[1.5rem]` |
 
 **Carousel attributes** (set on `<section>`):
 - `data-embla-align`: `start`, `center`, `end`
@@ -453,34 +405,22 @@ Step 3: Use in template
 
 #### Accordion
 
-```liquid
-<div class="accordion--group" id="faq-accordion">
-  {% for item in items %}
-    <div class="accordion--wrapper">
-      <button class="accordion--trigger">
-        {{ item.question }}
-      </button>
-      <div class="accordion--content">
-        {{ item.answer }}
-      </div>
-    </div>
-  {% endfor %}
-</div>
-```
+Use classes: `accordion--group`, `accordion--wrapper`, `accordion--trigger`, `accordion--content`
 
 #### Spoiler (Expandable Content)
 
-```liquid
-<div class="spoiler--wrapper">
-  <h3>{{ title }}</h3>
-  <div class="spoiler--content hidden">
-    <p>{{ description }}</p>
-  </div>
-  <button class="spoiler--trigger current:rotate-180">
-    <svg><use href="#i-chevron-down-bold"></use></svg>
-  </button>
-</div>
-```
+Use classes: `spoiler--wrapper`, `spoiler--content hidden`, `spoiler--trigger current:rotate-180`
+
+#### Share Dialog (Focus-trap)
+
+For job details pages. Uses `data-share-wrapper`, `data-share-trigger`, `data-share-dialog` attributes.
+
+**Accessibility features** (built into the script):
+- Focus moves to first link when dialog opens
+- Tab cycles within dialog (focus-trap)
+- Escape key closes dialog and returns focus to trigger
+- Clicking outside closes dialog
+- `aria-expanded` updates automatically
 
 ### 8. Accessibility (WCAG 2.1 AA)
 
@@ -556,213 +496,68 @@ Look for `@custom-variant` declarations:
 
 ### 11. Repeated Elements Pattern
 
-**When Figma shows repeated identical elements** (cards, logos, testimonials, etc.):
+**When Figma shows repeated identical elements** (cards, logos, testimonials):
 
 1. **Identify repetition**: Look for multiple identical elements in Figma
 2. **Create data structure**: Use paired `.liquid.json` file
 3. **Implement loop**: Use `{% for item in items %}` pattern
 
-**Example - Awards carousel with repeated logos**:
-
-**Figma shows**: 14 identical award badge containers
-
-**Implementation**:
-
-`src/partials/index/awards.liquid`:
-```liquid
-<div class="carousel--slide overflow-hidden">
-  <div class="flex flex-row">
-    {% for award in awards %}
-      <div class="mx-[1.2rem] h-[15rem] w-[16.4rem] shrink-0">
-        <img src="{{ award.images.src }}" alt="{{ award.images.alt }}" class="size-full object-contain">
-      </div>
-    {% endfor %}
-  </div>
-</div>
-```
-
-`src/partials/index/awards.liquid.json`:
-```json
-{
-  "awards": [
-    {
-      "images": {
-        "src": "https://...",
-        "alt": "Award description"
-      }
-    },
-    {
-      "images": {
-        "src": "https://...",
-        "alt": "Award description"
-      }
-    }
-  ]
-}
-```
-
 **Data context system**:
 - Each `.liquid` file can have a paired `.liquid.json` file
 - JSON data is automatically available in the template
-- Use dot notation to access nested data: `{{ award.images.src }}`
-- Arrays can be looped with `{% for item in items %}`
+- Use dot notation: `{{ item.image.src }}`
+- Arrays: `{% for item in items %}`
+
+> See Examples 8, 10 in EXAMPLES.md for full implementations.
 
 ### 12. Reusable Components
 
-**Check `src/components/` for reusable components**:
-
-Components are template fragments that accept parameters via `{% render %}`.
+**Check `src/components/` first** for existing reusable components.
 
 **Using a component**:
-
 ```liquid
 {% render 'button', text: 'Apply Now', link: '/jobs', type: "secondary" %}
-```
-
-**Component structure** (`src/components/button.liquid`):
-```liquid
-{% assign type = type | default: "primary" %}
-{% assign text = text | default: "Default Text" %}
-{% assign link = link | default: "#" %}
-
-<a href="{{ link }}" class="button button-{{ type }}">
-  {{ text }}
-</a>
 ```
 
 **When to create a component**:
 - Element appears in multiple sections/pages
 - Element has configurable variations (types, sizes, colors)
-- Element has complex logic that should be centralized
 
 **When to use inline markup**:
 - Element is unique to one section
-- Element is simple with no variations
 - Element is part of a loop (use data instead)
+
+> See Example 9 in EXAMPLES.md for component usage patterns.
 
 ## Common Patterns
 
-### Hero Section
+> **Full implementations**: See `EXAMPLES.md` for complete, real-world examples of all patterns below.
 
-```liquid
-<section class="relative z-1 overflow-hidden bg-black text-white">
-  <!-- Background decoration -->
-  <div class="absolute -top-[8.9rem] -left-[12.6rem] -z-1 h-[40.8rem] w-[40.5rem] rounded-[75rem]" 
-       style="background: radial-gradient(...)"></div>
-  
-  <div class="flex flex-col gap-[2.4rem] px-[1.6rem] pt-[4.8rem] pb-4">
-    <h1 class="h1">Hero Title</h1>
-    <p class="body-m">Hero description</p>
-  </div>
-</section>
-```
+### Hero Section
+- Use `relative z-1 overflow-hidden` on section for background decorations
+- Decorations use `absolute -z-1` to sit behind content
+- See Example 5 in EXAMPLES.md
 
 ### Content Section with Image
-
-```liquid
-<section class="bg-black text-white">
-  <div class="flex flex-col gap-4 px-[1.6rem] py-[6rem] lg:px-8">
-    <div class="flex flex-col gap-[2.4rem] lg:flex-row lg:items-center lg:gap-[4rem]">
-      <!-- Text -->
-      <div class="flex flex-col gap-[1.6rem] lg:w-[59.6rem]">
-        <h2 class="h2">Section Title</h2>
-        <p class="body-s text-light-gray">Description</p>
-      </div>
-      
-      <!-- Image -->
-      <div class="w-full lg:w-[37.3rem]">
-        <img src="..." alt="..." class="size-full object-cover">
-      </div>
-    </div>
-  </div>
-</section>
-```
+- Mobile: Stack vertically with `flex-col`
+- Desktop: Side-by-side with `lg:flex-row`
+- See Example 1 in EXAMPLES.md
 
 ### Card Grid with Data Loop
-
-**Figma shows**: 6 identical benefit cards
-
-**Implementation**:
-
-`src/partials/index/benefits.liquid`:
-```liquid
-<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-  {% for benefit in benefits %}
-    <article class="flex flex-col gap-[2.4rem]">
-      <div class="relative size-7">
-        <img src="{{ benefit.image.src }}" alt="{{ benefit.image.alt }}" class="size-full object-contain">
-      </div>
-      <h3 class="h4 text-red">{{ benefit.title }}</h3>
-      <p class="body-m">{{ benefit.description }}</p>
-    </article>
-  {% endfor %}
-</div>
-```
-
-`src/partials/index/benefits.liquid.json`:
-```json
-{
-  "benefits": [
-    {
-      "image": { "src": "...", "alt": "..." },
-      "title": "Health Insurance",
-      "description": "Comprehensive coverage..."
-    },
-    {
-      "image": { "src": "...", "alt": "..." },
-      "title": "401(k) Matching",
-      "description": "Generous retirement..."
-    }
-  ]
-}
-```
+- Create paired `.liquid.json` file for data
+- Use `{% for item in items %}` pattern
+- See Examples 3, 10 in EXAMPLES.md
 
 ### Carousel with Repeated Items
-
-**Figma shows**: Horizontal scrolling logos/images with 2.4rem gap between items
-
-`src/partials/index/awards.liquid`:
-```liquid
-<section 
-  data-embla-align="start"
-  data-embla-slides-to-scroll="2"
-  class="carousel bg-black">
-  
-  <div class="carousel--slide overflow-hidden">
-    <!-- No gap on flex container - use mx on items instead -->
-    <div class="flex flex-row">
-      {% for award in awards %}
-        <!-- mx-[1.2rem] = half of 2.4rem gap from Figma design -->
-        <div class="mx-[1.2rem] h-[15rem] w-[16.4rem] shrink-0">
-          <img src="{{ award.images.src }}" alt="{{ award.images.alt }}" class="size-full object-contain">
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-  
-  <!-- Navigation buttons -->
-</section>
-```
-
-**Responsive carousel gaps**: If Figma shows different gaps per breakpoint, use responsive mx:
-```liquid
-<!-- Mobile: 3rem gap, Desktop: 5rem gap -->
-<div class="mx-[1.5rem] lg:mx-[2.5rem] shrink-0">
-```
+- Use `mx` on items (half of Figma gap value)
+- Create data in `.liquid.json` for items
+- See Examples 4, 8 in EXAMPLES.md
 
 ### Using Components
-
 ```liquid
-<!-- Button component -->
 {% render 'button', text: 'Apply Now', link: '/jobs', type: "secondary" %}
-
-<!-- Custom component with multiple params -->
-{% render 'card', 
-  title: "Feature Title",
-  description: "Feature description",
-  icon: "star",
-  link: "/learn-more" %}
 ```
+- See Example 9 in EXAMPLES.md
 
 ## Conversion Checklist
 
@@ -786,6 +581,7 @@ When implementing a Figma design:
 - [ ] Test keyboard navigation
 - [ ] Verify color contrast ratios
 - [ ] Use appropriate interactive component (carousel, accordion, spoiler)
+- [ ] **For job details pages**: Use share dialog pattern with focus-trap (see Share Dialog section above)
 - [ ] Match spacing scale from config
 
 ## Anti-Patterns
@@ -877,5 +673,3 @@ Before considering implementation complete:
 - **Carousel script**: `src/scripts/carousel.js`
 - **Accordion script**: `src/scripts/accordion.js`
 - **Spoiler script**: `src/scripts/spoiler.js`
-- **Example sections**: `src/partials/index/`
-- **Examples file**: See `EXAMPLES.md` in this skill directory
