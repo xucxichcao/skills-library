@@ -22,9 +22,9 @@ Read `src/styles/tailwind.css` to understand:
 - **Custom utilities** (`@utility` blocks) — project-specific utilities like `text-shadow-outer-medium`, `header-primary`, etc.
 - **Custom variants** (`@custom-variant` blocks) — `hocus`, `current`, etc.
 
-### Step 2: Extract classes from the HTML/Liquid file
+### Step 2: Extract ALL classes from the HTML/Liquid file
 
-Parse all `class="..."` attributes. For each class string, split by whitespace to get individual classes.
+Parse all `class="..."` attributes. For each class string, split by whitespace to get individual classes. **Extract every single class — do not skip any.**
 
 Handle these patterns:
 - Standard utilities: `flex`, `hidden`, `bg-white`, `text-center`
@@ -36,7 +36,14 @@ Handle these patterns:
 - Fraction values: `w-1/2`, `-translate-y-1/2`
 - Compound classes with `/` opacity: `from-black/40`, `to-transparent`
 
+**CRITICAL — Responsive + Arbitrary combinations:**
+- `lg:max-w-[128rem]`, `md:h-[26.9rem]`, `lg:w-[51.6rem]`, `2xl:min-h-[40vw]`
+- These combine a responsive prefix (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`) with an arbitrary value `[...]`
+- **Do NOT overlook these** — they are easy to miss but must be checked individually
+
 Also check for classes in Liquid conditionals, e.g., `class="{% if condition %}active{% endif %} flex"`.
+
+**Build a complete list** of all unique classes before proceeding to Step 3.
 
 ### Step 3: Convert class names to CSS selectors and search
 
